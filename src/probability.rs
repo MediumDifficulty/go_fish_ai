@@ -1,14 +1,19 @@
 use std::ops;
 
+/// Represents a probability
 #[derive(Debug, Clone, Copy)]
 pub enum Probability {
+    /// We think that the actual value is about `x`
     Unknown(f32),
+    /// We know that the value is `x`
     Known(usize),
+    /// We know that the actual value is greater than or equal to `x`
     MoreThan(usize),
 }
 
 
 impl Probability {
+    /// Gets the estimated value of the probability
     pub fn value(&self) -> f32 {
         match self {
             Probability::Unknown(x) => *x,
