@@ -57,7 +57,7 @@ impl GameObserver {
 
         if placed {
             self.remove_all_cards_with_id(card);
-            self.deck.size-= SUITS;
+            self.deck.size -= SUITS;
             return Ok(());
         }
 
@@ -72,11 +72,13 @@ impl GameObserver {
         Ok(())
     }
 
+    /// Observes a player placing a set
     pub fn place(&mut self, card: usize) {
         self.remove_all_cards_with_id(card);
         self.deck.remove_known_cards(card, SUITS);
     }
 
+    /// Observes a player picking up a card from the deck
     pub fn self_pickup(&mut self, card: usize) {
         if let Some(own_deck) = &mut self.own_deck {
             self.deck.remove_known_cards(card, 1);
@@ -88,6 +90,7 @@ impl GameObserver {
         }
     }
 
+    /// Observes the observing player asking another player for a card
     pub fn self_query(&mut self, player: usize, card: usize, amount_received: usize) {
         if let Some(own_deck) = &mut self.own_deck {
             own_deck[card] += amount_received;
@@ -97,6 +100,21 @@ impl GameObserver {
                 own_deck[card] = 0;
             }
         }
+    }
+
+    /// Observes the observing player giving a set to another player
+    pub fn self_give_all(&mut self, player: usize, card: usize) -> Result<()> {
+        if let Some(own_deck) = &mut self.own_deck {
+            match own_deck[card] {
+                2 => self.other_players[player].cards.cards[card] = Probability::Known(3),
+                1 => self.other_players[player].cards.cards[card] = Probability::MoreThan(2),
+                _ => return Err(anyhow!("Invalid amount of cards received"))
+            }
+
+            own_deck[card] = 0;
+        }
+
+        Ok(())
     }
 
     pub fn move_is_legal(&self, m: &Move) -> bool {

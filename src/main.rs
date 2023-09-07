@@ -1,5 +1,5 @@
 use go_fish_ai::neural_network::NeuralNetwork;
-use rand::{distributions::Standard, thread_rng};
+use rand::thread_rng;
 
 fn main() {
     // let mut observer = GameObserver::new(4, Some([0, 0, 0, 3, 0, 1, 2, 1, 0, 0, 0, 0, 0]));
