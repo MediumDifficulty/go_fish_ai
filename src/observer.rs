@@ -1,5 +1,5 @@
 use anyhow::{Result, anyhow};
-use crate::{probability::Probability, trainer::Move};
+use crate::{probability::Probability, game::Move};
 
 /// The number of different cards
 pub const DECK_SIZE: usize = 13; // We only need to know the value of the card, not the suit.
@@ -13,18 +13,19 @@ pub type KnownDeck = [usize; DECK_SIZE];
 
 
 /// Used for estimating what other players could have based on the observing player's observations
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GameObserver {
     pub deck: Deck,
     pub other_players: Vec<Player>,
-    pub own_deck: Option<KnownDeck>
+    pub own_deck: Option<KnownDeck>,
+    pub id: usize,
 }
 
 impl GameObserver {
     /// Creates a new game observer
     /// 
     /// Set `own_deck` to `None` if you are not participating in the game as a player.
-    pub fn new(other_players: usize, own_deck: Option<KnownDeck>) -> Self {
+    pub fn new(other_players: usize, own_deck: Option<KnownDeck>, id: usize) -> Self {
         let mut deck = Deck::new_full();
 
         if let Some(own_deck) = own_deck {
@@ -35,7 +36,8 @@ impl GameObserver {
             // cards_remaining: DECK_SIZE - (7 * players),
             other_players: (0..other_players).map(|_| Player::with_starting_cards(&mut deck, STARTING_CARDS)).collect(),
             deck,
-            own_deck
+            own_deck,
+            id
         }
     }
 
@@ -106,9 +108,10 @@ impl GameObserver {
     pub fn self_give_all(&mut self, player: usize, card: usize) -> Result<()> {
         if let Some(own_deck) = &mut self.own_deck {
             match own_deck[card] {
-                2 => self.other_players[player].cards.cards[card] = Probability::Known(3),
                 1 => self.other_players[player].cards.cards[card] = Probability::MoreThan(2),
-                _ => return Err(anyhow!("Invalid amount of cards received"))
+                2 => self.other_players[player].cards.cards[card] = Probability::Known(3),
+                3 => self.other_players[player].cards.cards[card] = Probability::Known(0),
+                _ => return Err(anyhow!("Invalid amount of cards to give"))
             }
 
             own_deck[card] = 0;
@@ -120,7 +123,7 @@ impl GameObserver {
     pub fn move_is_legal(&self, m: &Move) -> bool {
         match m {
             Move::Pickup => self.deck.total() > 0.,
-            Move::Query(q) => self.own_deck.is_some_and(|own_deck| own_deck[q.card] > 0),
+            Move::Query(q) => q.player != self.id && self.own_deck.is_some_and(|own_deck| own_deck[q.card] > 0),
         }
     }
 
