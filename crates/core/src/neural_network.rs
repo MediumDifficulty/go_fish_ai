@@ -4,7 +4,7 @@ use rand_distr::StandardNormal;
 
 const MUTATION_RATE: f32 = 0.1;
 
-type Activation = fn(f32) -> f32;
+type Activation = fn(&mut [Neuron]);
 
 #[derive(Debug, Clone)]
 pub struct NeuralNetwork {
@@ -18,16 +18,22 @@ struct Layer {
 }
 
 #[derive(Debug, Clone)]
-struct Neuron {
+pub struct Neuron {
     weights: Vec<f32>,
     bias: f32,
-    value: f32,
+    pub value: f32,
 }
 
 impl NeuralNetwork {
     pub fn eval(&mut self, inputs: &[f32]) -> Result<Vec<f32>> {
-        for layer in self.layers.iter_mut() {
-            layer.eval(inputs);
+        for i in 0..self.layers.len() {
+            let inputs = if i > 0 {
+                self.layers[i - 1].neurons.iter().map(|neuron| neuron.value).collect::<Vec<f32>>()
+            } else {
+                inputs.to_vec()
+            };
+
+            self.layers[i].eval(inputs.as_slice());
         }
 
         Ok(self.layers.last().context("Invalid network size")?.neurons.iter().map(|neuron| neuron.value).collect())
@@ -89,6 +95,8 @@ impl Layer {
         for neuron in self.neurons.iter_mut() {
             neuron.eval(inputs, self.activation);
         }
+
+        (self.activation)(&mut self.neurons);
     }
 
     pub fn new_rand(size: usize, prev_size: usize, rng: &mut impl Rng, activation: Activation) -> Self {
@@ -101,13 +109,11 @@ impl Layer {
 
 impl Neuron {
     pub fn eval(&mut self, inputs: &[f32], activation: Activation) {
-        self.value = activation(
-            inputs
-                .iter()
-                .enumerate()
-                .map(|(i, &value)| value * self.weights[i] + self.bias)
-                .sum()
-        );
+        self.value = inputs
+            .iter()
+            .enumerate()
+            .map(|(i, &value)| value * self.weights[i] + self.bias)
+            .sum()
     }
 
     pub fn new_rand(prev_layer_size: usize, rand: &mut impl Rng) -> Self {

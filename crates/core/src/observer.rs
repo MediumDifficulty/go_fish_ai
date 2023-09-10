@@ -1,3 +1,4 @@
+use serde::Serialize;
 use anyhow::{Result, anyhow};
 use crate::{probability::Probability, game::Move};
 
@@ -13,10 +14,12 @@ pub type KnownDeck = [usize; DECK_SIZE];
 
 
 /// Used for estimating what other players could have based on the observing player's observations
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GameObserver {
     pub deck: Deck,
+    #[serde(rename = "otherPlayers")]
     pub other_players: Vec<Player>,
+    #[serde(rename = "ownDeck")]
     pub own_deck: Option<KnownDeck>,
     pub id: usize,
 }
@@ -136,7 +139,7 @@ impl GameObserver {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Player {
     pub cards: Deck,
 }
@@ -161,7 +164,7 @@ impl Default for Player {
 }
 
 /// Represents a collection of cards based on their probability
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Deck {
     pub cards: [Probability; DECK_SIZE],
     pub size: usize,

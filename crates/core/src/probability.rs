@@ -1,7 +1,9 @@
 use std::ops;
+use serde::Serialize;
 
 /// Represents a probability
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(tag = "type", content = "value")]
 pub enum Probability {
     /// We think that the actual value is about `x`
     Unknown(f32),

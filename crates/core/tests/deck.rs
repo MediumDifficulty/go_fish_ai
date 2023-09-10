@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use go_fish_ai::observer::Deck;
+    use fish_core::observer::Deck;
 
     #[test]
     fn new_full() {

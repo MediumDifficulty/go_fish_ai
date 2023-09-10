@@ -1,7 +1,8 @@
 use rand::{Rng, seq::SliceRandom};
 use anyhow::Result;
+use rayon::{slice::ParallelSliceMut, prelude::ParallelIterator};
 
-use crate::{game::{BotGame, INPUTS_PER_UNKNOWN_CARD}, neural_network::NeuralNetwork, observer::DECK_SIZE};
+use crate::{game::{BotGame, INPUTS_PER_UNKNOWN_CARD}, neural_network::NeuralNetwork, observer::DECK_SIZE, util};
 
 pub struct BotTrainer {
     pub players: Vec<Agent>,
@@ -31,7 +32,10 @@ impl BotTrainer {
                 fitness: 0.0,
                 network: NeuralNetwork::new_rand(
                     game_size * DECK_SIZE * INPUTS_PER_UNKNOWN_CARD + DECK_SIZE + 1,
-                    &[((game_size - 1) * DECK_SIZE, f32::tanh)],
+                    &[
+                        ((game_size - 1) * DECK_SIZE, util::ac_tanh),
+                        ((game_size - 1) * DECK_SIZE, util::ac_softmax),
+                    ],
                     rng
                 )
             }).collect(),
@@ -65,14 +69,20 @@ impl BotTrainer {
             self.players[i].network.mutate(rng);
         }
 
-        // Evaluation
-        for i in 0..self.evaluation_games {
-            self.players.shuffle(rng);
-            for chunk in self.players.chunks_mut(self.game_size) {
-                let mut game = BotGame::new_rand(chunk.iter().map(|a| a.network.clone()).collect::<Vec<_>>().as_slice(), rng);
+        // Reset fitness
+        for player in self.players.iter_mut() {
+            player.fitness = 0.;
+        }
 
-                for i in 0..self.max_turns {
-                    game.step(rng)?;
+        // Evaluation
+        for _ in 0..self.evaluation_games {
+            self.players.shuffle(rng);
+            self.players.chunks_mut(self.game_size).for_each(|chunk| {
+                let mut rng = rand::thread_rng();
+                let mut game = BotGame::new_rand(chunk.iter().map(|a| a.network.clone()).collect::<Vec<_>>().as_slice(), &mut rng);
+
+                for _ in 0..self.max_turns {
+                    game.step(&mut rng).unwrap();
                     if game.over {
                         break;
                     }
@@ -81,7 +91,7 @@ impl BotTrainer {
                 for (j, player) in chunk.iter_mut().enumerate() {
                     player.fitness += game.players[j].number_placed as f32;
                 }
-            }
+            })
         }
 
         Ok(())
